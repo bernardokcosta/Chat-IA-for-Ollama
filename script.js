@@ -9,13 +9,135 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingIndicator = document.getElementById('loadingIndicator');
     const modelSelector = document.getElementById('modelSelector');
     const newChatBtn = document.getElementById('newChatBtn');
+    const langPtBtn = document.getElementById('lang-pt');
+    const langEnBtn = document.getElementById('lang-en');
 
     const OLLAMA_API_BASE_URL = 'http://localhost:11434/api';
-    const PERSISTENT_INSTRUCTION = "Comunique-se em português brasileiro. Use apenas informações verificáveis de fontes confiáveis. Não invente. Clarifique ambiguidades pedindo mais detalhes.";
 
+    const translations = {
+        en: {
+            pageTitle: "Chat AI for Ollama",
+            mainTitle: "Chat AI for Ollama",
+            modelSelectorLabel: "Select Model:",
+            loadingModels: "Loading models...",
+            loadModelsError: "Failed to load models",
+            noModelsFound: "No models found",
+            newChatButton: "New Chat",
+            noMessagesYet: "No messages yet. Start the conversation!",
+            yourMessageLabel: "Your message:",
+            messagePlaceholder: "Ask the AI something...",
+            attachImageLabel: "Attach image (optional):",
+            removeImageButton: "Remove Image",
+            sendButton: "Send",
+            generatingResponse: "Generating response, please wait...",
+            userLabel: "You:",
+            aiLabel: "AI:",
+            alertSelectModel: "Please select an AI model.",
+            alertEnterMessageOrImage: "Please enter a message or select an image.",
+            couldNotGetResponse: "Could not get a response from the AI.",
+            ollamaModelError: "Ollama model error:",
+            apiCommunicationError: "Error communicating with the API:",
+            modelNoImageSupport: "The model '{modelName}' does not support image submission. Please try with a multimodal model or send text only.",
+            couldNotGetErrorDetails: "Could not get error details.",
+            persistentInstruction: "Communicate in English. Use only verifiable information from reliable sources. Do not invent. Clarify ambiguities by asking for more details.",
+            flagTitlePT: "Switch to Portuguese (Brazil)",
+            flagTitleEN: "Switch to English (US)"
+        },
+        pt: {
+            pageTitle: "Chat IA for Ollama",
+            mainTitle: "Chat IA for Ollama",
+            modelSelectorLabel: "Selecionar Modelo:",
+            loadingModels: "Carregando modelos...",
+            loadModelsError: "Falha ao carregar modelos",
+            noModelsFound: "Nenhum modelo encontrado",
+            newChatButton: "Novo Chat",
+            noMessagesYet: "Nenhuma mensagem ainda. Comece a conversa!",
+            yourMessageLabel: "Sua mensagem:",
+            messagePlaceholder: "Pergunte algo para a IA...",
+            attachImageLabel: "Anexar imagem (opcional):",
+            removeImageButton: "Remover Imagem",
+            sendButton: "Enviar",
+            generatingResponse: "Gerando resposta, por favor aguarde...",
+            userLabel: "Você:",
+            aiLabel: "IA:",
+            alertSelectModel: "Por favor, selecione um modelo de IA.",
+            alertEnterMessageOrImage: "Por favor, digite uma mensagem ou selecione uma imagem.",
+            couldNotGetResponse: "Não foi possível obter uma resposta da IA.",
+            ollamaModelError: "Erro do modelo Ollama:",
+            apiCommunicationError: "Erro na comunicação com a API:",
+            modelNoImageSupport: "O modelo '{modelName}' não suporta o envio de imagens. Por favor, tente com um modelo multimodal ou envie apenas texto.",
+            couldNotGetErrorDetails: "Não foi possível obter detalhes do erro.",
+            persistentInstruction: "Comunique-se em português brasileiro. Use apenas informações verificáveis de fontes confiáveis. Não invente. Clarifique ambiguidades pedindo mais detalhes.",
+            flagTitlePT: "Mudar para Português (Brasil)",
+            flagTitleEN: "Mudar para Inglês (US)"
+        }
+    };
+
+    let currentLanguage = localStorage.getItem('preferredLanguage') || 'pt';
+    let currentPersistentInstruction = translations[currentLanguage].persistentInstruction;
     let chatHistory = [];
 
+    function setLanguage(lang) {
+        if (!translations[lang]) {
+            console.warn(`Language ${lang} not supported.`);
+            return;
+        }
+        currentLanguage = lang;
+        currentPersistentInstruction = translations[lang].persistentInstruction;
+
+        document.documentElement.lang = lang === 'pt' ? 'pt-br' : 'en';
+
+        document.querySelectorAll('[data-lang-key]').forEach(element => {
+            const key = element.getAttribute('data-lang-key');
+            if (translations[lang][key]) {
+                if (element.tagName === 'INPUT' && element.type === 'submit') {
+                    element.value = translations[lang][key];
+                } else if (element.tagName === 'TEXTAREA' && element.hasAttribute('data-lang-key-placeholder')) {
+                    const placeholderKey = element.getAttribute('data-lang-key-placeholder');
+                    element.placeholder = translations[lang][placeholderKey];
+                    if (translations[lang][key]) element.textContent = translations[lang][key];
+                }
+                else {
+                    element.textContent = translations[lang][key];
+                }
+            }
+        });
+
+        document.querySelectorAll('[data-lang-key-placeholder]').forEach(element => {
+            const placeholderKey = element.getAttribute('data-lang-key-placeholder');
+            if (translations[lang][placeholderKey] && !element.hasAttribute('data-lang-key')) {
+                element.placeholder = translations[lang][placeholderKey];
+            }
+        });
+
+
+        langPtBtn.title = translations[lang].flagTitlePT;
+        langEnBtn.title = translations[lang].flagTitleEN;
+
+        langPtBtn.classList.toggle('active', lang === 'pt');
+        langEnBtn.classList.toggle('active', lang === 'en');
+
+        const modelSelectorInitialOption = modelSelector.querySelector('option[value=""]');
+        if (modelSelectorInitialOption) {
+            if (modelSelector.disabled && modelSelectorInitialOption.textContent.includes(translations.pt.loadModelsError.split(' ')[0]) || modelSelectorInitialOption.textContent.includes(translations.en.loadModelsError.split(' ')[0])) {
+                modelSelectorInitialOption.textContent = translations[lang].loadModelsError;
+            } else if (modelSelector.disabled && modelSelectorInitialOption.textContent.includes(translations.pt.noModelsFound.split(' ')[0]) || modelSelectorInitialOption.textContent.includes(translations.en.noModelsFound.split(' ')[0])) {
+                modelSelectorInitialOption.textContent = translations[lang].noModelsFound;
+            } else if (modelSelectorInitialOption.textContent.includes(translations.pt.loadingModels.split(' ')[0]) || modelSelectorInitialOption.textContent.includes(translations.en.loadingModels.split(' ')[0])) {
+                modelSelectorInitialOption.textContent = translations[lang].loadingModels;
+            }
+        }
+
+        localStorage.setItem('preferredLanguage', lang);
+        renderChatHistory();
+    }
+
     async function loadModels() {
+        const initialLoadingOption = modelSelector.querySelector('option[value=""]');
+        if (initialLoadingOption) {
+            initialLoadingOption.textContent = translations[currentLanguage].loadingModels;
+        }
+
         try {
             const response = await fetch(`${OLLAMA_API_BASE_URL}/tags`);
             if (!response.ok) {
@@ -35,36 +157,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data.models.length > 0) {
                     modelSelector.selectedIndex = 0;
                 }
-
+                modelSelector.disabled = false;
             } else {
                 const option = document.createElement('option');
                 option.value = '';
-                option.textContent = 'Nenhum modelo encontrado';
+                option.textContent = translations[currentLanguage].noModelsFound;
                 modelSelector.appendChild(option);
                 modelSelector.disabled = true;
             }
         } catch (error) {
             console.error('Falha ao carregar modelos Ollama:', error);
-            modelSelector.innerHTML = '<option value="">Falha ao carregar modelos</option>';
+            modelSelector.innerHTML = `<option value="">${translations[currentLanguage].loadModelsError}</option>`;
             modelSelector.disabled = true;
         }
     }
 
     function renderChatHistory() {
+        const currentStatusMessageElem = document.getElementById('statusMessage');
+
         if (chatHistory.length === 0) {
-            statusMessage.style.display = 'block';
+            if (currentStatusMessageElem) {
+                currentStatusMessageElem.textContent = translations[currentLanguage].noMessagesYet;
+                currentStatusMessageElem.style.display = 'block';
+            }
             chatHistoryContainer.innerHTML = '';
-            chatHistoryContainer.appendChild(statusMessage);
+            if (currentStatusMessageElem) chatHistoryContainer.appendChild(currentStatusMessageElem);
         } else {
-            statusMessage.style.display = 'none';
+            if (currentStatusMessageElem) currentStatusMessageElem.style.display = 'none';
             chatHistoryContainer.innerHTML = '';
+
             chatHistory.forEach(msg => {
                 const messageDiv = document.createElement('div');
                 messageDiv.classList.add('chat-message', msg.sender === 'user' ? 'user-message' : 'ia-message');
 
                 const senderP = document.createElement('p');
                 senderP.classList.add('message-sender');
-                senderP.textContent = msg.sender === 'user' ? 'Você:' : 'IA:';
+                senderP.textContent = msg.sender === 'user' ? translations[currentLanguage].userLabel : translations[currentLanguage].aiLabel;
                 messageDiv.appendChild(senderP);
 
                 if (msg.text) {
@@ -134,12 +262,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedModel = modelSelector.value;
 
         if (!selectedModel) {
-            alert('Por favor, selecione um modelo de IA.');
+            alert(translations[currentLanguage].alertSelectModel);
             return;
         }
 
         if (!userText && !userImageFile) {
-            alert('Por favor, digite uma mensagem ou selecione uma imagem.');
+            alert(translations[currentLanguage].alertEnterMessageOrImage);
             return;
         }
 
@@ -170,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
         userInput.value = '';
         clearImageSelection();
 
-        const promptForIA = `${PERSISTENT_INSTRUCTION}\n\nUsuário: ${userText}`;
+        const promptForIA = `${currentPersistentInstruction}\n\n${translations[currentLanguage].userLabel} ${userText}`;
 
         try {
             const requestPayload = {
@@ -191,50 +319,55 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(requestPayload),
             });
 
-            let iaResponseText = 'Não foi possível obter uma resposta da IA.';
+            let iaResponseText = translations[currentLanguage].couldNotGetResponse;
             if (response.ok) {
                 const data = await response.json();
                 if (data && data.response) {
                     iaResponseText = data.response;
                 } else if (data && data.error) {
-                    iaResponseText = `Erro do modelo Ollama: ${data.error}`;
+                    iaResponseText = `${translations[currentLanguage].ollamaModelError} ${data.error}`;
                 }
             } else {
-                let errorDetails = `Erro na comunicação com a API: ${response.status} ${response.statusText || ''}`;
+                let errorDetails = `${translations[currentLanguage].apiCommunicationError} ${response.status} ${response.statusText || ''}`;
                 try {
                     const errorData = await response.json();
                     if (errorData && errorData.error) {
                         if (errorData.error.toLowerCase().includes("does not support images") || errorData.error.toLowerCase().includes("image data is not supported")) {
-                            iaResponseText = `O modelo '${selectedModel}' não suporta o envio de imagens. Por favor, tente com um modelo multimodal ou envie apenas texto.`;
+                            iaResponseText = translations[currentLanguage].modelNoImageSupport.replace('{modelName}', selectedModel);
                         } else {
-                            iaResponseText = `Erro do modelo Ollama: ${errorData.error}`;
+                            iaResponseText = `${translations[currentLanguage].ollamaModelError} ${errorData.error}`;
                         }
                     } else {
                         const textError = await response.text();
-                        iaResponseText = `${errorDetails} - ${textError || 'Não foi possível obter detalhes do erro.'}`;
+                        iaResponseText = `${errorDetails} - ${textError || translations[currentLanguage].couldNotGetErrorDetails}`;
                     }
                 } catch (e) {
                     const textError = await response.text().catch(() => '');
-                    iaResponseText = `${errorDetails} ${textError || 'Não foi possível obter detalhes do erro.'}`;
+                    iaResponseText = `${errorDetails} ${textError || translations[currentLanguage].couldNotGetErrorDetails}`;
                 }
             }
             chatHistory.push({ sender: 'ia', text: iaResponseText, imageUrl: null });
 
         } catch (error) {
             console.error('Falha na comunicação com Ollama ou processamento:', error);
-            chatHistory.push({ sender: 'ia', text: `Falha ao conectar com o Ollama ou processar a resposta: ${error.message}`, imageUrl: null });
+            chatHistory.push({ sender: 'ia', text: `${translations[currentLanguage].apiCommunicationError.split(':')[0]}: ${error.message}`, imageUrl: null });
         } finally {
             renderChatHistory();
             loadingIndicator.style.display = 'none';
             userInput.disabled = false;
             imageInput.disabled = false;
-            modelSelector.disabled = false;
+            if (!(modelSelector.options.length === 1 && modelSelector.options[0].value === '')) {
+                modelSelector.disabled = false;
+            }
             chatForm.querySelector('input[type="submit"]').disabled = false;
             newChatBtn.disabled = false;
             userInput.focus();
         }
     });
 
+    langPtBtn.addEventListener('click', () => setLanguage('pt'));
+    langEnBtn.addEventListener('click', () => setLanguage('en'));
+
+    setLanguage(currentLanguage);
     loadModels();
-    renderChatHistory();
 });

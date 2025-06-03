@@ -11,40 +11,41 @@
     <main class="container mt-4">
         <div class="card shadow-sm">
             <div class="card-body p-4">
-                <h1 class="card-title text-center mb-4">Chat IA for Ollama</h1>
-
+                <div id="languageSelectorContainer" class="language-selector-container">
+                    <span id="lang-pt" class="language-flag" title="Mudar para Português (Brasil)">🇧🇷</span>
+                    <span id="lang-en" class="language-flag" title="Mudar para Inglês (US)">🇺🇸</span>
+                </div>
+                <h1 class="card-title text-center mb-4" data-lang-key="mainTitle">Chat IA for Ollama</h1>
                 <div class="controls-container">
                     <div class="col-md-6">
-                        <label for="modelSelector" class="form-label">Selecionar Modelo:</label>
+                        <label for="modelSelector" class="form-label" data-lang-key="modelSelectorLabel">Selecionar Modelo:</label>
                         <select id="modelSelector" class="form-select">
-                            <option value="">Carregando modelos...</option>
+                            <option value="" data-lang-key="loadingModels">Carregando modelos...</option>
                         </select>
                     </div>
-                    <button id="newChatBtn" class="btn btn-secondary align-self-end">Novo Chat</button>
+                    <button id="newChatBtn" class="btn btn-secondary align-self-end" data-lang-key="newChatButton">Novo Chat</button>
                 </div>
                 <div id="chatHistoryContainer" class="chat-history mb-3">
-                    <p id="statusMessage" class="text-muted text-center">Nenhuma mensagem ainda. Comece a conversa!</p>
+                    <p id="statusMessage" class="text-muted text-center" data-lang-key="noMessagesYet">Nenhuma mensagem ainda. Comece a conversa!</p>
                 </div>
                 <form id="chatForm">
                     <div class="mb-3">
-                        <label for="msg-ia" class="form-label fs-5">Sua mensagem:</label>
-                        <textarea id="msg-ia" name="msg-ia" class="form-control form-control-lg" placeholder="Pergunte algo para a IA..." rows="2"></textarea>
+                        <label for="msg-ia" class="form-label fs-5" data-lang-key="yourMessageLabel">Sua mensagem:</label>
+                        <textarea id="msg-ia" name="msg-ia" class="form-control form-control-lg" data-lang-key-placeholder="messagePlaceholder" placeholder="Pergunte algo para a IA..." rows="2"></textarea>
                     </div>
-
                     <div class="mb-3">
-                        <label for="imageInput" class="form-label">Anexar imagem (opcional):</label>
+                        <label for="imageInput" class="form-label" data-lang-key="attachImageLabel">Anexar imagem (opcional):</label>
                         <input type="file" class="form-control" id="imageInput" accept="image/*">
                     </div>
-
                     <div id="imagePreviewContainer">
                         <img id="imagePreview" src="#" alt="Pré-visualização da imagem" />
-                        <button type="button" id="removeImageBtn" class="btn btn-sm btn-outline-danger mt-1" style="display:none;">Remover Imagem</button>
+                        <button type="button" id="removeImageBtn" class="btn btn-sm btn-outline-danger mt-1" style="display:none;" data-lang-key="removeImageButton">Remover Imagem</button>
                     </div>
                     <div class="d-grid gap-2 mt-3">
-                        <input type="submit" value="Enviar" class="btn btn-primary btn-lg">
+                        <input type="submit" data-lang-key="sendButton" value="Enviar" class="btn btn-primary btn-lg">
                     </div>
                 </form>
-                <div id="loadingIndicator" class="mt-3 text-info" style="display: none;">
+                <div id="loadingIndicator" class="mt-3 text-info" style="display: none;" data-lang-key="generatingResponse">
                     Gerando resposta, por favor aguarde...
                 </div>
             </div>
