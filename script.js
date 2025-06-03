@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`Erro ao buscar modelos: ${response.statusText}`);
             }
             const data = await response.json();
-            modelSelector.innerHTML = ''; // Limpa opções de carregamento
+            modelSelector.innerHTML = '';
 
             if (data.models && data.models.length > 0) {
                 data.models.forEach(model => {
@@ -32,16 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     modelSelector.appendChild(option);
                 });
 
-                const defaultModels = ['gemma:latest', 'gemma3:4b', 'llama3:latest'];
-                let foundDefault = false;
-                for (const dm of defaultModels) {
-                    if (data.models.some(m => m.name === dm)) {
-                        modelSelector.value = dm;
-                        foundDefault = true;
-                        break;
-                    }
+                if (data.models.length > 0) {
+                    modelSelector.selectedIndex = 0;
                 }
-                if (!foundDefault) modelSelector.selectedIndex = 0;
 
             } else {
                 const option = document.createElement('option');
@@ -88,6 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const imgElement = document.createElement('img');
                     imgElement.src = msg.imageUrl;
                     imgElement.alt = msg.sender === 'user' ? 'Imagem enviada pelo usuário' : 'Imagem da IA';
+                    imgElement.style.maxWidth = '200px';
+                    imgElement.style.maxHeight = '200px';
+                    imgElement.style.objectFit = 'contain';
                     messageDiv.appendChild(imgElement);
                 }
                 chatHistoryContainer.appendChild(messageDiv);
@@ -154,16 +150,21 @@ document.addEventListener('DOMContentLoaded', () => {
         chatForm.querySelector('input[type="submit"]').disabled = true;
         newChatBtn.disabled = true;
 
-        let userImageUrl = null;
+        let userImageUrlForDisplay = null;
+        let base64ImageForApi = null;
+
         if (userImageFile) {
-            userImageUrl = await new Promise((resolve) => {
+            userImageUrlForDisplay = await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = (e) => resolve(e.target.result);
                 reader.readAsDataURL(userImageFile);
             });
+            if (userImageUrlForDisplay) {
+                base64ImageForApi = userImageUrlForDisplay.split(',')[1];
+            }
         }
 
-        chatHistory.push({ sender: 'user', text: userText, imageUrl: userImageUrl });
+        chatHistory.push({ sender: 'user', text: userText, imageUrl: userImageFile ? userImageUrlForDisplay : null });
         renderChatHistory();
 
         userInput.value = '';
@@ -172,16 +173,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const promptForIA = `${PERSISTENT_INSTRUCTION}\n\nUsuário: ${userText}`;
 
         try {
+            const requestPayload = {
+                model: selectedModel,
+                prompt: promptForIA,
+                stream: false,
+            };
+
+            if (base64ImageForApi) {
+                requestPayload.images = [base64ImageForApi];
+            }
+
             const response = await fetch(`${OLLAMA_API_BASE_URL}/generate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    model: selectedModel,
-                    prompt: promptForIA,
-                    stream: false,
-                }),
+                body: JSON.stringify(requestPayload),
             });
 
             let iaResponseText = 'Não foi possível obter uma resposta da IA.';
@@ -193,12 +200,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     iaResponseText = `Erro do modelo Ollama: ${data.error}`;
                 }
             } else {
-                iaResponseText = `Erro na comunicação com a API: ${response.status} ${response.statusText || 'Não foi possível obter detalhes do erro.'}`;
+                let errorDetails = `Erro na comunicação com a API: ${response.status} ${response.statusText || ''}`;
+                try {
+                    const errorData = await response.json();
+                    if (errorData && errorData.error) {
+                        if (errorData.error.toLowerCase().includes("does not support images") || errorData.error.toLowerCase().includes("image data is not supported")) {
+                            iaResponseText = `O modelo '${selectedModel}' não suporta o envio de imagens. Por favor, tente com um modelo multimodal ou envie apenas texto.`;
+                        } else {
+                            iaResponseText = `Erro do modelo Ollama: ${errorData.error}`;
+                        }
+                    } else {
+                        const textError = await response.text();
+                        iaResponseText = `${errorDetails} - ${textError || 'Não foi possível obter detalhes do erro.'}`;
+                    }
+                } catch (e) {
+                    const textError = await response.text().catch(() => '');
+                    iaResponseText = `${errorDetails} ${textError || 'Não foi possível obter detalhes do erro.'}`;
+                }
             }
             chatHistory.push({ sender: 'ia', text: iaResponseText, imageUrl: null });
 
         } catch (error) {
-            console.error(error);
+            console.error('Falha na comunicação com Ollama ou processamento:', error);
             chatHistory.push({ sender: 'ia', text: `Falha ao conectar com o Ollama ou processar a resposta: ${error.message}`, imageUrl: null });
         } finally {
             renderChatHistory();
