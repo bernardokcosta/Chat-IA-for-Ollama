@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (msg.text) {
                     const textP = document.createElement('p');
                     if (msg.sender === 'ia') {
-                        textP.innerHTML = msg.text.replace(/\n/g, '<br>');
+                        textP.innerHTML = marked.parse(msg.text);
                     } else {
                         textP.textContent = msg.text;
                     }
