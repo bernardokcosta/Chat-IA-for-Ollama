@@ -12,7 +12,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const langPtBtn = document.getElementById('lang-pt');
     const langEnBtn = document.getElementById('lang-en');
 
-    const OLLAMA_API_BASE_URL = 'http://localhost:11434/api';
+    const settingsIcon = document.getElementById('settingsIcon');
+    const settingsModalElement = document.getElementById('settingsModal');
+    const ollamaIpInput = document.getElementById('ollamaIpInput');
+    const persistentInstructionInput = document.getElementById('persistentInstructionInput');
+    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    let settingsModal = null;
+
+    let OLLAMA_BASE_URL = 'http://localhost:11434';
 
     const translations = {
         en: {
@@ -41,7 +48,17 @@ document.addEventListener('DOMContentLoaded', () => {
             couldNotGetErrorDetails: "Could not get error details.",
             persistentInstruction: "Communicate in English. Use only verifiable information from reliable sources. Do not invent. Clarify ambiguities by asking for more details.",
             flagTitlePT: "Switch to Portuguese (Brazil)",
-            flagTitleEN: "Switch to English (US)"
+            flagTitleEN: "Switch to English (US)",
+            settingsIconTitle: "Settings",
+            settingsModalTitle: "Settings",
+            ollamaIpLabel: "Ollama API Base Address:",
+            ollamaIpHint: "Ex: http://192.168.1.10:11434. Do not include /api.",
+            persistentInstructionLabel: "Persistent System Instruction:",
+            persistentInstructionHint: "This instruction will be used for the current language ({currentLanguage}).",
+            settingsCancelButton: "Cancel",
+            settingsSaveButton: "Save Changes",
+            settingsApplied: "Settings applied. Models will be reloaded.",
+            invalidOllamaUrl: "Invalid Ollama URL format. Please use http://hostname:port."
         },
         pt: {
             pageTitle: "Chat IA for Ollama",
@@ -69,13 +86,51 @@ document.addEventListener('DOMContentLoaded', () => {
             couldNotGetErrorDetails: "Não foi possível obter detalhes do erro.",
             persistentInstruction: "Comunique-se em português brasileiro. Use apenas informações verificáveis de fontes confiáveis. Não invente. Clarifique ambiguidades pedindo mais detalhes.",
             flagTitlePT: "Mudar para Português (Brasil)",
-            flagTitleEN: "Mudar para Inglês (US)"
+            flagTitleEN: "Mudar para Inglês (US)",
+            settingsIconTitle: "Configurações",
+            settingsModalTitle: "Configurações",
+            ollamaIpLabel: "Endereço Base da API Ollama:",
+            ollamaIpHint: "Ex: http://192.168.1.10:11434. Não inclua /api.",
+            persistentInstructionLabel: "Instrução de Sistema Persistente:",
+            persistentInstructionHint: "Esta instrução será usada para o idioma atual ({currentLanguage}).",
+            settingsCancelButton: "Cancelar",
+            settingsSaveButton: "Salvar Alterações",
+            settingsApplied: "Configurações aplicadas. Os modelos serão recarregados.",
+            invalidOllamaUrl: "Formato de URL do Ollama inválido. Por favor, use http://hostname:porta."
         }
     };
 
     let currentLanguage = localStorage.getItem('preferredLanguage') || 'pt';
-    let currentPersistentInstruction = translations[currentLanguage].persistentInstruction;
+    let currentPersistentInstruction = '';
     let chatHistory = [];
+    let customPersistentInstructions = {};
+
+    function getOllamaApiUrl(endpoint) {
+        const base = OLLAMA_BASE_URL.endsWith('/') ? OLLAMA_BASE_URL.slice(0, -1) : OLLAMA_BASE_URL;
+        return `${base}/api/${endpoint}`;
+    }
+
+    function loadSettingsFromLocalStorage() {
+        const savedOllamaBaseUrl = localStorage.getItem('ollamaBaseUrl');
+        if (savedOllamaBaseUrl) {
+            OLLAMA_BASE_URL = savedOllamaBaseUrl;
+        }
+
+        const savedCustomInstructions = localStorage.getItem('customPersistentInstructions');
+        if (savedCustomInstructions) {
+            try {
+                customPersistentInstructions = JSON.parse(savedCustomInstructions);
+            } catch (e) {
+                console.error("Erro ao parsear instruções personalizadas do localStorage:", e);
+                customPersistentInstructions = {};
+            }
+        }
+    }
+
+    function saveSettingsToLocalStorage() {
+        localStorage.setItem('ollamaBaseUrl', OLLAMA_BASE_URL);
+        localStorage.setItem('customPersistentInstructions', JSON.stringify(customPersistentInstructions));
+    }
 
     function setLanguage(lang) {
         if (!translations[lang]) {
@@ -83,22 +138,29 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         currentLanguage = lang;
-        currentPersistentInstruction = translations[lang].persistentInstruction;
-
+        currentPersistentInstruction = customPersistentInstructions[currentLanguage] || translations[currentLanguage].persistentInstruction;
         document.documentElement.lang = lang === 'pt' ? 'pt-br' : 'en';
 
         document.querySelectorAll('[data-lang-key]').forEach(element => {
             const key = element.getAttribute('data-lang-key');
             if (translations[lang][key]) {
+                let textToShow = translations[lang][key];
+                if (key === "persistentInstructionHint" && settingsModalElement.contains(element)) {
+                    textToShow = textToShow.replace('{currentLanguage}', lang.toUpperCase());
+                }
+
                 if (element.tagName === 'INPUT' && element.type === 'submit') {
-                    element.value = translations[lang][key];
+                    element.value = textToShow;
                 } else if (element.tagName === 'TEXTAREA' && element.hasAttribute('data-lang-key-placeholder')) {
                     const placeholderKey = element.getAttribute('data-lang-key-placeholder');
-                    element.placeholder = translations[lang][placeholderKey];
-                    if (translations[lang][key]) element.textContent = translations[lang][key];
-                }
-                else {
-                    element.textContent = translations[lang][key];
+                    element.placeholder = translations[lang][placeholderKey] || '';
+                    if (translations[lang][key] && element.id !== 'persistentInstructionInput') {
+                        element.textContent = textToShow;
+                    }
+                } else if (element.hasAttribute('title') && element.getAttribute('data-lang-key') === key) {
+                    element.title = textToShow;
+                } else {
+                    element.textContent = textToShow;
                 }
             }
         });
@@ -110,40 +172,55 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-
         langPtBtn.title = translations[lang].flagTitlePT;
         langEnBtn.title = translations[lang].flagTitleEN;
+        if(settingsIcon) settingsIcon.title = translations[lang].settingsIconTitle;
 
         langPtBtn.classList.toggle('active', lang === 'pt');
         langEnBtn.classList.toggle('active', lang === 'en');
 
         const modelSelectorInitialOption = modelSelector.querySelector('option[value=""]');
         if (modelSelectorInitialOption) {
-            if (modelSelector.disabled && modelSelectorInitialOption.textContent.includes(translations.pt.loadModelsError.split(' ')[0]) || modelSelectorInitialOption.textContent.includes(translations.en.loadModelsError.split(' ')[0])) {
+            const ptLoadError = translations.pt.loadModelsError.split(' ')[0];
+            const enLoadError = translations.en.loadModelsError.split(' ')[0];
+            const ptNoModels = translations.pt.noModelsFound.split(' ')[0];
+            const enNoModels = translations.en.noModelsFound.split(' ')[0];
+            const ptLoading = translations.pt.loadingModels.split(' ')[0];
+            const enLoading = translations.en.loadingModels.split(' ')[0];
+
+            if (modelSelector.disabled && (modelSelectorInitialOption.textContent.includes(ptLoadError) || modelSelectorInitialOption.textContent.includes(enLoadError))) {
                 modelSelectorInitialOption.textContent = translations[lang].loadModelsError;
-            } else if (modelSelector.disabled && modelSelectorInitialOption.textContent.includes(translations.pt.noModelsFound.split(' ')[0]) || modelSelectorInitialOption.textContent.includes(translations.en.noModelsFound.split(' ')[0])) {
+            } else if (modelSelector.disabled && (modelSelectorInitialOption.textContent.includes(ptNoModels) || modelSelectorInitialOption.textContent.includes(enNoModels))) {
                 modelSelectorInitialOption.textContent = translations[lang].noModelsFound;
-            } else if (modelSelectorInitialOption.textContent.includes(translations.pt.loadingModels.split(' ')[0]) || modelSelectorInitialOption.textContent.includes(translations.en.loadingModels.split(' ')[0])) {
-                modelSelectorInitialOption.textContent = translations[lang].loadingModels;
+            } else if (modelSelectorInitialOption.textContent.includes(ptLoading) || modelSelectorInitialOption.textContent.includes(enLoading)) {
+                if (!modelSelector.disabled || (modelSelector.options.length > 0 && modelSelector.options[0].value !== "")) {
+                } else {
+                    modelSelectorInitialOption.textContent = translations[lang].loadingModels;
+                }
             }
         }
-
         localStorage.setItem('preferredLanguage', lang);
         renderChatHistory();
     }
 
     async function loadModels() {
-        const initialLoadingOption = modelSelector.querySelector('option[value=""]');
-        if (initialLoadingOption) {
-            initialLoadingOption.textContent = translations[currentLanguage].loadingModels;
+        const initialLoadingOption = modelSelector.querySelector('option[value=""]') || document.createElement('option');
+        initialLoadingOption.value = "";
+        initialLoadingOption.textContent = translations[currentLanguage].loadingModels;
+        if (!modelSelector.querySelector('option[value=""]')) {
+            modelSelector.prepend(initialLoadingOption);
         }
+        modelSelector.disabled = true;
+
 
         try {
-            const response = await fetch(`${OLLAMA_API_BASE_URL}/tags`);
+            const response = await fetch(getOllamaApiUrl('tags'));
             if (!response.ok) {
-                throw new Error(`Erro ao buscar modelos: ${response.statusText}`);
+                throw new Error(`${translations[currentLanguage].loadModelsError}: ${response.statusText} (status: ${response.status})`);
             }
             const data = await response.json();
+
+            const currentlySelectedModel = modelSelector.value;
             modelSelector.innerHTML = '';
 
             if (data.models && data.models.length > 0) {
@@ -154,7 +231,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     modelSelector.appendChild(option);
                 });
 
-                if (data.models.length > 0) {
+                if (data.models.some(m => m.name === currentlySelectedModel)) {
+                    modelSelector.value = currentlySelectedModel;
+                } else if (data.models.length > 0) {
                     modelSelector.selectedIndex = 0;
                 }
                 modelSelector.disabled = false;
@@ -274,7 +353,9 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingIndicator.style.display = 'block';
         userInput.disabled = true;
         imageInput.disabled = true;
-        modelSelector.disabled = true;
+        if (!(modelSelector.options.length === 1 && modelSelector.options[0].value === '')) {
+            modelSelector.disabled = true;
+        }
         chatForm.querySelector('input[type="submit"]').disabled = true;
         newChatBtn.disabled = true;
 
@@ -311,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 requestPayload.images = [base64ImageForApi];
             }
 
-            const response = await fetch(`${OLLAMA_API_BASE_URL}/generate`, {
+            const response = await fetch(getOllamaApiUrl('generate'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -325,14 +406,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (data && data.response) {
                     iaResponseText = data.response;
                 } else if (data && data.error) {
-                    iaResponseText = `${translations[currentLanguage].ollamaModelError} ${data.error}`;
+                    if (data.error.toLowerCase().includes("does not support images") || data.error.toLowerCase().includes("image data is not supported by this model")) {
+                        iaResponseText = translations[currentLanguage].modelNoImageSupport.replace('{modelName}', selectedModel);
+                    } else {
+                        iaResponseText = `${translations[currentLanguage].ollamaModelError} ${data.error}`;
+                    }
                 }
             } else {
                 let errorDetails = `${translations[currentLanguage].apiCommunicationError} ${response.status} ${response.statusText || ''}`;
                 try {
                     const errorData = await response.json();
                     if (errorData && errorData.error) {
-                        if (errorData.error.toLowerCase().includes("does not support images") || errorData.error.toLowerCase().includes("image data is not supported")) {
+                        if (errorData.error.toLowerCase().includes("does not support images") || errorData.error.toLowerCase().includes("image data is not supported by this model")) {
                             iaResponseText = translations[currentLanguage].modelNoImageSupport.replace('{modelName}', selectedModel);
                         } else {
                             iaResponseText = `${translations[currentLanguage].ollamaModelError} ${errorData.error}`;
@@ -356,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingIndicator.style.display = 'none';
             userInput.disabled = false;
             imageInput.disabled = false;
-            if (!(modelSelector.options.length === 1 && modelSelector.options[0].value === '')) {
+            if (!(modelSelector.options.length === 1 && modelSelector.options[0].value === '' && modelSelector.disabled)) {
                 modelSelector.disabled = false;
             }
             chatForm.querySelector('input[type="submit"]').disabled = false;
@@ -365,9 +450,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    if (settingsModalElement) {
+        settingsModal = new bootstrap.Modal(settingsModalElement);
+    }
+
+    if (settingsIcon) {
+        settingsIcon.addEventListener('click', () => {
+            ollamaIpInput.value = OLLAMA_BASE_URL;
+            persistentInstructionInput.value = customPersistentInstructions[currentLanguage] || translations[currentLanguage].persistentInstruction;
+
+            const instructionHintElement = settingsModalElement.querySelector('.form-text[data-lang-key="persistentInstructionHint"]');
+            if (instructionHintElement) {
+                instructionHintElement.textContent = translations[currentLanguage].persistentInstructionHint.replace('{currentLanguage}', currentLanguage.toUpperCase());
+            }
+
+            if (settingsModal) settingsModal.show();
+        });
+    }
+
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', () => {
+            const newOllamaIp = ollamaIpInput.value.trim();
+            const newPersistentInstruction = persistentInstructionInput.value.trim();
+
+            if (!newOllamaIp.match(/^https?:\/\/[^\s/$.?#].[^\s]*$/i) || newOllamaIp.endsWith('/api') || newOllamaIp.endsWith('/')) {
+                alert(translations[currentLanguage].invalidOllamaUrl + " " + translations[currentLanguage].ollamaIpHint);
+                return;
+            }
+
+            OLLAMA_BASE_URL = newOllamaIp;
+            if (newPersistentInstruction) {
+                customPersistentInstructions[currentLanguage] = newPersistentInstruction;
+                currentPersistentInstruction = newPersistentInstruction;
+            } else {
+                delete customPersistentInstructions[currentLanguage];
+                currentPersistentInstruction = translations[currentLanguage].persistentInstruction;
+            }
+
+            saveSettingsToLocalStorage();
+            if (settingsModal) settingsModal.hide();
+            console.log(translations[currentLanguage].settingsApplied);
+            loadModels();
+        });
+    }
+
     langPtBtn.addEventListener('click', () => setLanguage('pt'));
     langEnBtn.addEventListener('click', () => setLanguage('en'));
 
+    loadSettingsFromLocalStorage();
     setLanguage(currentLanguage);
     loadModels();
 });

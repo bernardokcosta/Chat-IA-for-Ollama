@@ -11,6 +11,9 @@
     <main class="container mt-4">
         <div class="card shadow-sm">
             <div class="card-body p-4">
+                <div id="settingsIconContainer" class="settings-icon-container">
+                    <span id="settingsIcon" data-lang-key="settingsIconTitle" title="Configurações">⚙️</span>
+                </div>
                 <div id="languageSelectorContainer" class="language-selector-container">
                     <span id="lang-pt" class="language-flag" title="Mudar para Português (Brasil)">🇧🇷</span>
                     <span id="lang-en" class="language-flag" title="Mudar para Inglês (US)">🇺🇸</span>
@@ -51,6 +54,32 @@
             </div>
         </div>
     </main>
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="settingsModalLabel" data-lang-key="settingsModalTitle">Configurações</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="ollamaIpInput" class="form-label" data-lang-key="ollamaIpLabel">Endereço Base da API Ollama:</label>
+                        <input type="text" class="form-control" id="ollamaIpInput" placeholder="http://localhost:11434">
+                        <div class="form-text" data-lang-key="ollamaIpHint">Ex: http://192.168.1.10:11434. Não inclua /api.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="persistentInstructionInput" class="form-label" data-lang-key="persistentInstructionLabel">Instrução de Sistema Persistente:</label>
+                        <textarea class="form-control" id="persistentInstructionInput" rows="5"></textarea>
+                        <div class="form-text" data-lang-key="persistentInstructionHint">Esta instrução será usada para o idioma atual ({currentLanguage}).</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-lang-key="settingsCancelButton">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveSettingsBtn" data-lang-key="settingsSaveButton">Salvar Alterações</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/15.0.7/marked.min.js" integrity="sha512-rPuOZPx/WHMHNx2RoALKwiCDiDrCo4ekUctyTYKzBo8NGA79NcTW2gfrbcCL2RYL7RdjX2v9zR0fKyI4U4kPew==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="./script.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>
