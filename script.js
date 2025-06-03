@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const newChatBtn = document.getElementById('newChatBtn');
 
     const OLLAMA_API_BASE_URL = 'http://localhost:11434/api';
-    const PERSISTENT_INSTRUCTION = "Em português brasileiro, e utilize fontes ou referências confiáveis para apoiar suas respostas. Não invente fatos, se uma solicitação não estiver clara ou for ambígua, ou se isso melhorar sua resposta, peça mais detalhes para confirmar sua compreensão.";
+    const PERSISTENT_INSTRUCTION = "Comunique-se em português brasileiro. Use apenas informações verificáveis de fontes confiáveis. Não invente. Clarifique ambiguidades pedindo mais detalhes.";
 
     let chatHistory = [];
 
