@@ -1,5 +1,5 @@
 .chat-history {
-    max-height: 500px;
+    max-height: 450px;
     overflow-y: auto;
     border: 1px solid #ddd;
     padding: 15px;
@@ -47,8 +47,15 @@
 }
 
 #imagePreview {
-    max-width: 200px;
-    max-height: 200px;
+    max-width: 150px;
+    max-height: 150px;
     border: 1px solid #ddd;
     display: none;
+}
+
+.controls-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
 }
